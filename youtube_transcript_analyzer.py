@@ -283,7 +283,9 @@ class YouTubeTranscriptAnalyzer:
                 
         except Exception as e:
             print(f"獲取格式列表失敗: {e}")
-            return [], {}    def download_audio_by_format(self, url, format_id):
+            return [], {}
+
+    def download_audio_by_format(self, url, format_id):
         """根據指定格式 ID 下載音訊"""
         print(f"使用格式 ID {format_id} 下載音訊...")
         
@@ -393,7 +395,7 @@ class YouTubeTranscriptAnalyzer:
                 'description': '最基本下載'
             }
         ]
-          for i, strategy in enumerate(fallback_strategies):
+        for i, strategy in enumerate(fallback_strategies):
             print(f"備用策略 {i+1}: {strategy['description']}")
             
             # 第一個策略使用音訊提取，其他策略直接下載
