@@ -35,14 +35,13 @@ class YouTubeTranscriptAnalyzer:
         print("正在連接 LLM...")
         # 連接 Ollama LLM
         try:
-            self.llm = Ollama(model="gemma:7b")
-            # 測試連接
+            self.llm = Ollama(model="gemma:7b")            # 測試連接
             test_response = self.llm.invoke("Hello")
             print("LLM 連接成功！")
         except Exception as e:
             print(f"LLM 連接失敗: {e}")
             print("請確保 Ollama 已安裝並運行 gemma:7b 模型")
-    
+
     def get_youtube_url(self):
         """詢問使用者輸入 YouTube URL"""
         while True:
@@ -58,7 +57,7 @@ class YouTubeTranscriptAnalyzer:
             r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/'
             r'(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
         )
-                return youtube_regex.match(url) is not None
+        return youtube_regex.match(url) is not None
     
     def run(self):
         """主執行方法"""
@@ -156,10 +155,9 @@ class YouTubeTranscriptAnalyzer:
         english_ratio = len(english_chars) / len(text) if text else 0
         
         print(f"語言檢測 - 中文比例: {chinese_ratio:.2%}, 英文比例: {english_ratio:.2%}")
-        
-        # 如果英文字符比例較高，認為是英文
+          # 如果英文字符比例較高，認為是英文
         return english_ratio > chinese_ratio and english_ratio > 0.3
-    
+
     def process_transcript_with_llm(self, transcript, is_english):
         """使用 LLM 處理逐字稿"""
         if not self.llm:
@@ -234,73 +232,70 @@ class YouTubeTranscriptAnalyzer:
                 print("暫存檔案已清理")
         except Exception as e:
             print(f"清理暫存檔案時出現錯誤: {e}")
-    
-    def get_available_formats(self, url):
-    """獲取可用的音訊格式"""
-    print("正在檢查可用的音訊格式...")
-    
-    ydl_opts = {
-        'quiet': True,
-        'no_warnings': True,
-        'listformats': True,
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      def get_available_formats(self, url):
+        """獲取可用的音訊格式"""
+        print("正在檢查可用的音訊格式...")
+        
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+            'listformats': True,
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
         }
-    }
-    
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            formats = info.get('formats', [])
-            
-            # 篩選出音訊格式
-            audio_formats = []
-            for f in formats:
-                if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
-                    audio_formats.append({
-                        'format_id': f.get('format_id'),
-                        'ext': f.get('ext'),
-                        'acodec': f.get('acodec'),
-                        'abr': f.get('abr', 0),
-                        'filesize': f.get('filesize', 0),
-                        'quality': f.get('quality', 0)
-                    })
-            
-            # 按品質排序，優先選擇 m4a 和 webm 格式
-            audio_formats.sort(key=lambda x: (
-                x['ext'] in ['m4a', 'webm'],  # 優先這些格式
-                x['abr'] or 0
-            ), reverse=True)
-            
-            return audio_formats, info
-            
-    except Exception as e:
-        print(f"獲取格式列表失敗: {e}")
-        return [], {}
-
-def download_audio_by_format(self, url, format_id):
-    """根據指定格式 ID 下載音訊"""
-    print(f"使用格式 ID {format_id} 下載音訊...")
-    
-    temp_dir = tempfile.mkdtemp()
-    output_path = os.path.join(temp_dir, "audio.%(ext)s")
-    
-    ydl_opts = {
-        'format': format_id,  # 使用特定格式 ID
-        'outtmpl': output_path,
-        'postprocessors': [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'wav',
-            'preferredquality': '192',
-        }],
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        },
-    }
-    
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+        
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                formats = info.get('formats', [])
+                
+                # 篩選出音訊格式
+                audio_formats = []
+                for f in formats:
+                    if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
+                        audio_formats.append({
+                            'format_id': f.get('format_id'),
+                            'ext': f.get('ext'),
+                            'acodec': f.get('acodec'),
+                            'abr': f.get('abr', 0),
+                            'filesize': f.get('filesize', 0),
+                            'quality': f.get('quality', 0)
+                        })
+                
+                # 按品質排序，優先選擇 m4a 和 webm 格式
+                audio_formats.sort(key=lambda x: (
+                    x['ext'] in ['m4a', 'webm'],  # 優先這些格式
+                    x['abr'] or 0
+                ), reverse=True)
+                
+                return audio_formats, info
+                
+        except Exception as e:
+            print(f"獲取格式列表失敗: {e}")
+            return [], {}    def download_audio_by_format(self, url, format_id):
+        """根據指定格式 ID 下載音訊"""
+        print(f"使用格式 ID {format_id} 下載音訊...")
+        
+        temp_dir = tempfile.mkdtemp()
+        output_path = os.path.join(temp_dir, "audio.%(ext)s")
+        
+        ydl_opts = {
+            'format': format_id,  # 使用特定格式 ID
+            'outtmpl': output_path,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'wav',
+                'preferredquality': '192',
+            }],
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+        }
+        
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
         
         # 尋找下載的檔案
         for ext in ['wav', 'm4a', 'webm', 'mp3']:
