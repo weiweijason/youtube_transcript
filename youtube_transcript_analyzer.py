@@ -225,7 +225,8 @@ class YouTubeTranscriptAnalyzer:
         """清理暫存檔案"""
         try:
             if audio_file and os.path.exists(audio_file):
-                # 清理音訊檔案及其目錄                temp_dir = os.path.dirname(audio_file)
+                # 清理音訊檔案及其目錄
+                temp_dir = os.path.dirname(audio_file)
                 import shutil
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 print("暫存檔案已清理")
@@ -249,24 +250,34 @@ class YouTubeTranscriptAnalyzer:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 formats = info.get('formats', [])
-                
-                # 篩選出音訊格式
+                  # 篩選出音訊格式（包括純音訊和混合格式）
                 audio_formats = []
                 for f in formats:
-                    if f.get('acodec') != 'none' and f.get('vcodec') == 'none':
-                        audio_formats.append({
+                    # 接受純音訊格式或有音訊編解碼器的混合格式
+                    if f.get('acodec') and f.get('acodec') != 'none':
+                        format_info = {
                             'format_id': f.get('format_id'),
                             'ext': f.get('ext'),
                             'acodec': f.get('acodec'),
                             'abr': f.get('abr', 0),
                             'filesize': f.get('filesize', 0),
-                            'quality': f.get('quality', 0)
-                        })
-                
-                # 按品質排序，優先選擇 m4a 和 webm 格式
+                            'quality': f.get('quality', 0),
+                            'vcodec': f.get('vcodec', 'none'),  # 記錄視頻編解碼器
+                            'is_audio_only': f.get('vcodec') == 'none'  # 標記是否為純音訊
+                        }
+                        audio_formats.append(format_info)
+                  # 按品質排序，優先選擇純音訊格式，然後是 m4a 和 webm 格式
                 audio_formats.sort(key=lambda x: (
-                    x['ext'] in ['m4a', 'webm'],  # 優先這些格式
-                    x['abr'] or 0                ), reverse=True)
+                    x.get('is_audio_only', False),  # 優先純音訊格式                    x['ext'] in ['m4a', 'webm', 'mp4'],  # 優先這些格式
+                    x['abr'] or 0  # 按音訊位元率排序
+                ), reverse=True)
+                
+                # 調試：顯示找到的音訊格式
+                if audio_formats:
+                    print(f"找到 {len(audio_formats)} 個可用的音訊格式:")
+                    for fmt in audio_formats[:3]:  # 只顯示前3個
+                        audio_only = "純音訊" if fmt.get('is_audio_only') else "混合格式"
+                        print(f"  ID: {fmt['format_id']}, 格式: {fmt['ext']}, 編解碼器: {fmt['acodec']}, 類型: {audio_only}")
                 
                 return audio_formats, info
                 
@@ -296,9 +307,8 @@ class YouTubeTranscriptAnalyzer:
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
-            
-            # 尋找下載的檔案
-            for ext in ['wav', 'm4a', 'webm', 'mp3']:
+              # 尋找下載的檔案
+            for ext in ['wav', 'm4a', 'webm', 'mp4', 'mp3']:
                 audio_file = os.path.join(temp_dir, f"audio.{ext}")
                 if os.path.exists(audio_file):
                     print(f"音訊下載成功！格式: {ext}")
@@ -324,9 +334,8 @@ class YouTubeTranscriptAnalyzer:
             return None
         
         print(f"找到 {len(audio_formats)} 個音訊格式")
-        
-        # 2. 按優先順序嘗試下載
-        format_priority = ['m4a', 'webm', 'mp3', 'aac']
+          # 2. 按優先順序嘗試下載
+        format_priority = ['m4a', 'webm', 'mp4', 'mp3', 'aac']
         
         for preferred_ext in format_priority:
             for fmt in audio_formats:
@@ -392,9 +401,8 @@ class YouTubeTranscriptAnalyzer:
             
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([url])
-                  # 檢查下載結果
-                for ext in ['wav', 'm4a', 'webm', 'mp3', 'aac']:
+                    ydl.download([url])                # 檢查下載結果
+                for ext in ['wav', 'm4a', 'webm', 'mp4', 'mp3', 'aac']:
                     audio_file = os.path.join(temp_dir, f"audio_{i}.{ext}")
                     if os.path.exists(audio_file):
                         print(f"備用方法成功！檔案: {audio_file}")
