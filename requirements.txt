@@ -1,4 +1,4 @@
-yt-dlp==2023.12.30
+yt-dlp>=2025.5.22
 openai-whisper==20231117
 torch==2.1.0
 langchain-community==0.0.13
