@@ -283,17 +283,16 @@ class YouTubeTranscriptAnalyzer:
                 
         except Exception as e:
             print(f"獲取格式列表失敗: {e}")
-            return [], {}
-
-    def download_audio_by_format(self, url, format_id):
+            return [], {}    def download_audio_by_format(self, url, format_id):
         """根據指定格式 ID 下載音訊"""
         print(f"使用格式 ID {format_id} 下載音訊...")
         
         temp_dir = tempfile.mkdtemp()
         output_path = os.path.join(temp_dir, "audio.%(ext)s")
         
+        # 更強的反檢測配置
         ydl_opts = {
-            'format': format_id,  # 使用特定格式 ID
+            'format': format_id,
             'outtmpl': output_path,
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
@@ -301,8 +300,23 @@ class YouTubeTranscriptAnalyzer:
                 'preferredquality': '192',
             }],
             'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-us,en;q=0.5',
+                'Accept-Encoding': 'gzip,deflate',
+                'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.7',
+                'Keep-Alive': '115',
+                'Connection': 'keep-alive',
             },
+            'extractor_args': {
+                'youtube': {
+                    'skip': ['hls', 'dash'],
+                    'player_skip': ['configs', 'webpage'],
+                }
+            },
+            'sleep_interval': 1,
+            'max_sleep_interval': 3,
+            'no_warnings': True,
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -361,43 +375,54 @@ class YouTubeTranscriptAnalyzer:
         """備用下載方法"""
         print("使用備用下載策略...")
         
-        temp_dir = tempfile.mkdtemp()        
-        # 嘗試多種備用策略
+        temp_dir = tempfile.mkdtemp()          # 嘗試多種備用策略
         fallback_strategies = [
-            # 策略 1: 最低品質
+            # 策略 1: 任何可用的音訊格式
             {
-                'format': 'worst[ext=m4a]/worst[acodec=aac]/worst',
-                'description': '最低品質 m4a/aac'
+                'format': '18/worst',  # 直接嘗試格式 18 或最差品質
+                'description': '直接下載可用格式'
             },
-            # 策略 2: 僅音訊，不限格式
+            # 策略 2: 不使用後處理器，直接下載
             {
-                'format': 'bestaudio[filesize<50M]/bestaudio',
-                'description': '最佳音訊（限制檔案大小）'
+                'format': 'worst[height<=480]',
+                'description': '低解析度影片（含音訊）'
             },
-            # 策略 3: 特定編解碼器
+            # 策略 3: 最基本的設定
             {
-                'format': 'bestaudio[acodec=opus]/bestaudio[acodec=aac]',
-                'description': 'Opus 或 AAC 編解碼器'
+                'format': 'worst',
+                'description': '最基本下載'
             }
         ]
-        
-        for i, strategy in enumerate(fallback_strategies):
+          for i, strategy in enumerate(fallback_strategies):
             print(f"備用策略 {i+1}: {strategy['description']}")
             
-            ydl_opts = {
-                'format': strategy['format'],
-                'outtmpl': os.path.join(temp_dir, f"audio_{i}.%(ext)s"),
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'wav',
-                    'preferredquality': '128',  # 降低品質
-                }],
-                'http_headers': {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                },
-                'retries': 3,
-                'fragment_retries': 3,
-            }
+            # 第一個策略使用音訊提取，其他策略直接下載
+            if i == 0:
+                ydl_opts = {
+                    'format': strategy['format'],
+                    'outtmpl': os.path.join(temp_dir, f"audio_{i}.%(ext)s"),
+                    'postprocessors': [{
+                        'key': 'FFmpegExtractAudio',
+                        'preferredcodec': 'wav',
+                        'preferredquality': '128',
+                    }],
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+                    },
+                    'no_warnings': True,
+                    'ignoreerrors': True,
+                }
+            else:
+                # 直接下載，不進行音訊提取
+                ydl_opts = {
+                    'format': strategy['format'],
+                    'outtmpl': os.path.join(temp_dir, f"video_{i}.%(ext)s"),
+                    'http_headers': {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+                    },
+                    'no_warnings': True,
+                    'ignoreerrors': True,
+                }
             
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
