@@ -1,0 +1,52 @@
+# Git 相關
+.git
+.gitignore
+
+# Python 相關
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env
+pip-log.txt
+pip-delete-this-directory.txt
+.tox
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.DS_Store
+
+# 虛擬環境
+venv/
+env/
+ENV/
+
+# IDE 相關
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 臨時文件
+*.tmp
+*.temp
+temp/
+tmp/
+
+# 模型和數據文件（這些會在容器內下載）
+*.model
+*.bin
+models/
+data/
+
+# 其他
+*.md
+!README.md
+.dockerignore
+docker-compose.yml

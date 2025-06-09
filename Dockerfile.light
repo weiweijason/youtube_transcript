@@ -1,0 +1,53 @@
+# YouTube 逐字稿分析器 - 輕量版 Dockerfile
+FROM python:3.10-slim
+
+# 設定工作目錄
+WORKDIR /app
+
+# 安裝最小系統依賴
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# 安裝 Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+# 安裝 Python 依賴（最小化版本）
+RUN pip install --no-cache-dir \
+    yt-dlp==2023.12.30 \
+    openai-whisper==20231117 \
+    torch==2.1.0 --index-url https://download.pytorch.org/whl/cpu \
+    langchain-community==0.0.13
+
+# 複製應用程式文件
+COPY simple_analyzer.py .
+
+# 設定環境變數
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONIOENCODING=utf-8
+
+# 暴露 Ollama 服務端口
+EXPOSE 11434
+
+# 創建輕量版啟動腳本
+RUN echo '#!/bin/bash\n\
+echo "🚀 啟動 YouTube 逐字稿分析器（輕量版）"\n\
+echo "📡 啟動 Ollama 服務..."\n\
+ollama serve &\n\
+\n\
+echo "⏳ 等待 Ollama 服務啟動..."\n\
+sleep 15\n\
+\n\
+echo "📥 下載 Gemma 7B 模型（這可能需要幾分鐘）..."\n\
+ollama pull gemma:7b\n\
+\n\
+echo "✅ 環境準備完成！"\n\
+echo "🎬 啟動 YouTube 逐字稿分析器..."\n\
+echo ""\n\
+python simple_analyzer.py\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# 設定入口點
+CMD ["/app/start.sh"]

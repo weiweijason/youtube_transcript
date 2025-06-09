@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  youtube-analyzer:
+    build: .
+    container_name: youtube_transcript_analyzer
+    ports:
+      - "11434:11434"  # Ollama 服務端口
+    volumes:
+      - ./data:/app/data  # 數據持久化
+      - /tmp:/tmp  # 臨時文件目錄
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONIOENCODING=utf-8
+    stdin_open: true  # 保持 stdin 開啟以便用戶輸入
+    tty: true        # 分配 pseudo-TTY
+    restart: unless-stopped
+    
+    # 資源限制（可根據需要調整）
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+          cpus: '4.0'
+        reservations:
+          memory: 4G
+          cpus: '2.0'
