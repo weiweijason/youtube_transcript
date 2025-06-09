@@ -225,14 +225,14 @@ class YouTubeTranscriptAnalyzer:
         """清理暫存檔案"""
         try:
             if audio_file and os.path.exists(audio_file):
-                # 清理音訊檔案及其目錄
-                temp_dir = os.path.dirname(audio_file)
+                # 清理音訊檔案及其目錄                temp_dir = os.path.dirname(audio_file)
                 import shutil
                 shutil.rmtree(temp_dir, ignore_errors=True)
                 print("暫存檔案已清理")
         except Exception as e:
             print(f"清理暫存檔案時出現錯誤: {e}")
-      def get_available_formats(self, url):
+
+    def get_available_formats(self, url):
         """獲取可用的音訊格式"""
         print("正在檢查可用的音訊格式...")
         
@@ -266,14 +266,15 @@ class YouTubeTranscriptAnalyzer:
                 # 按品質排序，優先選擇 m4a 和 webm 格式
                 audio_formats.sort(key=lambda x: (
                     x['ext'] in ['m4a', 'webm'],  # 優先這些格式
-                    x['abr'] or 0
-                ), reverse=True)
+                    x['abr'] or 0                ), reverse=True)
                 
                 return audio_formats, info
                 
         except Exception as e:
             print(f"獲取格式列表失敗: {e}")
-            return [], {}    def download_audio_by_format(self, url, format_id):
+            return [], {}
+
+    def download_audio_by_format(self, url, format_id):
         """根據指定格式 ID 下載音訊"""
         print(f"使用格式 ID {format_id} 下載音訊...")
         
@@ -292,125 +293,119 @@ class YouTubeTranscriptAnalyzer:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             },
         }
-        
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
-        
-        # 尋找下載的檔案
-        for ext in ['wav', 'm4a', 'webm', 'mp3']:
-            audio_file = os.path.join(temp_dir, f"audio.{ext}")
-            if os.path.exists(audio_file):
-                print(f"音訊下載成功！格式: {ext}")
-                return audio_file
-        
-        raise FileNotFoundError("找不到下載的音訊檔案")
-        
-    except Exception as e:
-        print(f"格式 {format_id} 下載失敗: {e}")
-        return None
-
-def download_audio(self, url):
-    """改進的音訊下載方法"""
-    print("正在下載影片音訊...")
-    
-    # 1. 首先獲取可用格式
-    audio_formats, info = self.get_available_formats(url)
-    
-    if info:
-        print(f"影片標題: {info.get('title', '未知')}")
-        print(f"影片長度: {info.get('duration', 0)} 秒")
-    
-    if not audio_formats:
-        print("未找到可用的音訊格式")
-        return None
-    
-    print(f"找到 {len(audio_formats)} 個音訊格式")
-    
-    # 2. 按優先順序嘗試下載
-    format_priority = ['m4a', 'webm', 'mp3', 'aac']
-    
-    for preferred_ext in format_priority:
-        for fmt in audio_formats:
-            if fmt['ext'] == preferred_ext:
-                print(f"嘗試下載 {preferred_ext} 格式 (ID: {fmt['format_id']})")
-                result = self.download_audio_by_format(url, fmt['format_id'])
-                if result:
-                    return result
-    
-    # 3. 如果優先格式都失敗，嘗試所有可用格式
-    print("嘗試其他可用格式...")
-    for fmt in audio_formats[:5]:  # 只嘗試前5個格式
-        print(f"嘗試格式 {fmt['ext']} (ID: {fmt['format_id']})")
-        result = self.download_audio_by_format(url, fmt['format_id'])
-        if result:
-            return result
-    
-    # 4. 如果所有格式都失敗，使用備用方法
-    print("所有特定格式都失敗，嘗試備用方法...")
-    return self.download_audio_fallback(url)
-
-def download_audio_fallback(self, url):
-    """備用下載方法"""
-    print("使用備用下載策略...")
-    
-    temp_dir = tempfile.mkdtemp()
-    
-    # 嘗試多種備用策略
-    fallback_strategies = [
-        # 策略 1: 最低品質
-        {
-            'format': 'worst[ext=m4a]/worst[acodec=aac]/worst',
-            'description': '最低品質 m4a/aac'
-        },
-        # 策略 2: 僅音訊，不限格式
-        {
-            'format': 'bestaudio[filesize<50M]/bestaudio',
-            'description': '最佳音訊（限制檔案大小）'
-        },
-        # 策略 3: 特定編解碼器
-        {
-            'format': 'bestaudio[acodec=opus]/bestaudio[acodec=aac]',
-            'description': 'Opus 或 AAC 編解碼器'
-        }
-    ]
-    
-    for i, strategy in enumerate(fallback_strategies):
-        print(f"備用策略 {i+1}: {strategy['description']}")
-        
-        ydl_opts = {
-            'format': strategy['format'],
-            'outtmpl': os.path.join(temp_dir, f"audio_{i}.%(ext)s"),
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'wav',
-                'preferredquality': '128',  # 降低品質
-            }],
-            'http_headers': {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            'retries': 3,
-            'fragment_retries': 3,
-        }
-        
-        try:
+          try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
             
-            # 檢查下載結果
-            for ext in ['wav', 'm4a', 'webm', 'mp3', 'aac']:
-                audio_file = os.path.join(temp_dir, f"audio_{i}.{ext}")
+            # 尋找下載的檔案
+            for ext in ['wav', 'm4a', 'webm', 'mp3']:
+                audio_file = os.path.join(temp_dir, f"audio.{ext}")
                 if os.path.exists(audio_file):
-                    print(f"備用方法成功！檔案: {audio_file}")
+                    print(f"音訊下載成功！格式: {ext}")
                     return audio_file
-                    
-        except Exception as e:
-            print(f"備用策略 {i+1} 失敗: {e}")
-            continue
-    
-    print("所有下載方法都失敗了")
-    return None
-# ...existing code...
+            
+            raise FileNotFoundError("找不到下載的音訊檔案")
+              except Exception as e:
+            print(f"格式 {format_id} 下載失敗: {e}")
+            return None
+
+    def download_audio(self, url):
+        """改進的音訊下載方法"""
+        print("正在下載影片音訊...")
+        
+        # 1. 首先獲取可用格式
+        audio_formats, info = self.get_available_formats(url)        
+        if info:
+            print(f"影片標題: {info.get('title', '未知')}")
+            print(f"影片長度: {info.get('duration', 0)} 秒")
+        
+        if not audio_formats:
+            print("未找到可用的音訊格式")
+            return None
+        
+        print(f"找到 {len(audio_formats)} 個音訊格式")
+        
+        # 2. 按優先順序嘗試下載
+        format_priority = ['m4a', 'webm', 'mp3', 'aac']
+        
+        for preferred_ext in format_priority:
+            for fmt in audio_formats:
+                if fmt['ext'] == preferred_ext:
+                    print(f"嘗試下載 {preferred_ext} 格式 (ID: {fmt['format_id']})")
+                    result = self.download_audio_by_format(url, fmt['format_id'])
+                    if result:
+                        return result
+        
+        # 3. 如果優先格式都失敗，嘗試所有可用格式
+        print("嘗試其他可用格式...")
+        for fmt in audio_formats[:5]:  # 只嘗試前5個格式
+            print(f"嘗試格式 {fmt['ext']} (ID: {fmt['format_id']})")
+            result = self.download_audio_by_format(url, fmt['format_id'])
+            if result:
+                return result
+        
+        # 4. 如果所有格式都失敗，使用備用方法
+        print("所有特定格式都失敗，嘗試備用方法...")
+        return self.download_audio_fallback(url)
+
+    def download_audio_fallback(self, url):
+        """備用下載方法"""
+        print("使用備用下載策略...")
+        
+        temp_dir = tempfile.mkdtemp()        
+        # 嘗試多種備用策略
+        fallback_strategies = [
+            # 策略 1: 最低品質
+            {
+                'format': 'worst[ext=m4a]/worst[acodec=aac]/worst',
+                'description': '最低品質 m4a/aac'
+            },
+            # 策略 2: 僅音訊，不限格式
+            {
+                'format': 'bestaudio[filesize<50M]/bestaudio',
+                'description': '最佳音訊（限制檔案大小）'
+            },
+            # 策略 3: 特定編解碼器
+            {
+                'format': 'bestaudio[acodec=opus]/bestaudio[acodec=aac]',
+                'description': 'Opus 或 AAC 編解碼器'
+            }
+        ]
+        
+        for i, strategy in enumerate(fallback_strategies):
+            print(f"備用策略 {i+1}: {strategy['description']}")
+            
+            ydl_opts = {
+                'format': strategy['format'],
+                'outtmpl': os.path.join(temp_dir, f"audio_{i}.%(ext)s"),
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'wav',
+                    'preferredquality': '128',  # 降低品質
+                }],
+                'http_headers': {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                },
+                'retries': 3,
+                'fragment_retries': 3,
+            }
+            
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url])
+                  # 檢查下載結果
+                for ext in ['wav', 'm4a', 'webm', 'mp3', 'aac']:
+                    audio_file = os.path.join(temp_dir, f"audio_{i}.{ext}")
+                    if os.path.exists(audio_file):
+                        print(f"備用方法成功！檔案: {audio_file}")
+                        return audio_file
+                        
+            except Exception as e:
+                print(f"備用策略 {i+1} 失敗: {e}")
+                continue
+        
+        print("所有下載方法都失敗了")
+        return None
 
 
 def main():
