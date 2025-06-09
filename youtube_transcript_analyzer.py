@@ -60,40 +60,67 @@ class YouTubeTranscriptAnalyzer:
         )
         return youtube_regex.match(url) is not None
     
-    def download_audio(self, url):
-        """下載 YouTube 影片音訊"""
-        print("正在下載影片音訊...")
-        
-        # 創建臨時檔案
-        temp_dir = tempfile.mkdtemp()
-        output_path = os.path.join(temp_dir, "audio.%(ext)s")
-        
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': output_path,
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'wav',
-                'preferredquality': '192',
-            }],
-        }
-        
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url])
-            
-            # 找到下載的音訊檔案
-            audio_file = os.path.join(temp_dir, "audio.wav")
-            if os.path.exists(audio_file):
-                print("音訊下載完成！")
-                return audio_file
-            else:
-                raise FileNotFoundError("音訊檔案未找到")
-                
-        except Exception as e:
-            print(f"下載失敗: {e}")
-            return None
+    # ...existing code...
+def download_audio(self, url):
+    """下載 YouTube 影片音訊"""
+    print("正在下載影片音訊...")
     
+    # 創建臨時檔案
+    temp_dir = tempfile.mkdtemp()
+    output_path = os.path.join(temp_dir, "audio.%(ext)s")
+    
+    # 更新的 yt-dlp 設定，加入更多規避檢測的選項
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': output_path,
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'wav',
+            'preferredquality': '192',
+        }],
+        # 新增規避檢測的選項
+        'cookiefile': None,
+        'extract_flat': False,
+        'writethumbnail': False,
+        'writeinfojson': False,
+        'writedescription': False,
+        'writeautomaticsub': False,
+        'writesubtitles': False,
+        'ignoreerrors': False,
+        'no_warnings': False,
+        'extractaudio': True,
+        'audioformat': 'wav',
+        'audioquality': '192',
+        # 重要：加入用戶代理字符串
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+    }
+    
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # 先嘗試獲取影片資訊
+            info = ydl.extract_info(url, download=False)
+            print(f"影片標題: {info.get('title', '未知')}")
+            print(f"影片長度: {info.get('duration', 0)} 秒")
+            
+            # 下載音訊
+            ydl.download([url])
+        
+        # 找到下載的音訊檔案
+        audio_file = os.path.join(temp_dir, "audio.wav")
+        if os.path.exists(audio_file):
+            print("音訊下載完成！")
+            return audio_file
+        else:
+            raise FileNotFoundError("音訊檔案未找到")
+            
+    except Exception as e:
+        print(f"下載失敗: {e}")
+        print("嘗試使用替代方法...")
+        return self.download_audio_alternative(url, temp_dir)
+# ...existing code...
+
     def extract_transcript(self, audio_file):
         """使用 Whisper 提取逐字稿"""
         print("正在提取逐字稿...")
