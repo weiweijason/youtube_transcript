@@ -293,7 +293,7 @@ class YouTubeTranscriptAnalyzer:
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             },
         }
-          try:
+        try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
             
@@ -305,7 +305,7 @@ class YouTubeTranscriptAnalyzer:
                     return audio_file
             
             raise FileNotFoundError("找不到下載的音訊檔案")
-              except Exception as e:
+        except Exception as e:
             print(f"格式 {format_id} 下載失敗: {e}")
             return None
 
