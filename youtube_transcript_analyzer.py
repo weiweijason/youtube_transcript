@@ -58,10 +58,184 @@ class YouTubeTranscriptAnalyzer:
             r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/'
             r'(watch\?v=|embed/|v/|.+\?v=)?([^&=%\?]{11})'
         )
-        return youtube_regex.match(url) is not None
+                return youtube_regex.match(url) is not None
     
-    # ...existing code...
-def get_available_formats(self, url):
+    def run(self):
+        """主執行方法"""
+        print("=== YouTube 逐字稿分析器 ===")
+        print("此工具可以:")
+        print("1. 下載 YouTube 影片音訊")
+        print("2. 使用 Whisper 生成逐字稿")
+        print("3. 使用 LLM 翻譯/加標點")
+        print("4. 生成摘要")
+        print("=" * 40)
+        
+        try:
+            # 獲取 YouTube URL
+            url = self.get_youtube_url()
+            
+            # 下載音訊
+            audio_file = self.download_audio(url)
+            if not audio_file:
+                print("音訊下載失敗，程式結束")
+                return
+            
+            # 提取逐字稿
+            transcript = self.extract_transcript(audio_file)
+            if not transcript:
+                print("逐字稿提取失敗，程式結束")
+                return
+            
+            print("\n=== 原始逐字稿 ===")
+            print(transcript[:500] + "..." if len(transcript) > 500 else transcript)
+            
+            # 語言檢測
+            is_english = self.detect_language(transcript)
+            
+            # 處理逐字稿
+            processed_transcript = self.process_transcript_with_llm(transcript, is_english)
+            
+            print("\n=== 處理後的逐字稿 ===")
+            print(processed_transcript[:500] + "..." if len(processed_transcript) > 500 else processed_transcript)
+            
+            # 生成摘要
+            summary = self.generate_summary(processed_transcript)
+            
+            print("\n=== 摘要 ===")
+            print(summary)
+            
+            # 清理暫存檔案
+            self.cleanup_temp_files(audio_file)
+            
+            print("\n分析完成！")
+            
+        except KeyboardInterrupt:
+            print("\n\n程式被使用者中斷")
+        except Exception as e:
+            print(f"執行過程中發生錯誤: {e}")
+        finally:
+            print("清理資源...")
+    
+    def extract_transcript(self, audio_file):
+        """使用 Whisper 提取逐字稿"""
+        print("正在使用 Whisper 提取逐字稿...")
+        
+        try:
+            # 檢查檔案是否存在
+            if not os.path.exists(audio_file):
+                print(f"音訊檔案不存在: {audio_file}")
+                return None
+            
+            # 使用 Whisper 轉錄
+            result = self.whisper_model.transcribe(
+                audio_file,
+                language=None,  # 自動檢測語言
+                task="transcribe",
+                verbose=False
+            )
+            
+            transcript = result["text"].strip()
+            detected_language = result.get("language", "unknown")
+            
+            print(f"逐字稿提取完成！檢測到的語言: {detected_language}")
+            print(f"逐字稿長度: {len(transcript)} 個字符")
+            
+            return transcript
+            
+        except Exception as e:
+            print(f"逐字稿提取失敗: {e}")
+            return None
+    
+    def detect_language(self, text):
+        """簡單的語言檢測"""
+        # 檢查是否包含中文字符
+        chinese_chars = re.findall(r'[\u4e00-\u9fff]', text)
+        english_chars = re.findall(r'[a-zA-Z]', text)
+        
+        chinese_ratio = len(chinese_chars) / len(text) if text else 0
+        english_ratio = len(english_chars) / len(text) if text else 0
+        
+        print(f"語言檢測 - 中文比例: {chinese_ratio:.2%}, 英文比例: {english_ratio:.2%}")
+        
+        # 如果英文字符比例較高，認為是英文
+        return english_ratio > chinese_ratio and english_ratio > 0.3
+    
+    def process_transcript_with_llm(self, transcript, is_english):
+        """使用 LLM 處理逐字稿"""
+        if not self.llm:
+            print("LLM 未連接，跳過處理")
+            return transcript
+        
+        try:
+            if is_english:
+                print("正在將英文逐字稿翻譯成中文...")
+                prompt = f"""
+請將以下英文逐字稿翻譯成繁體中文，保持原意和語調：
+
+{transcript}
+
+請只回傳翻譯結果，不要其他說明：
+"""
+            else:
+                print("正在為中文逐字稿添加標點符號...")
+                prompt = f"""
+請為以下中文逐字稿添加適當的標點符號和段落分隔，讓文本更容易閱讀：
+
+{transcript}
+
+請只回傳處理後的文本，不要其他說明：
+"""
+            
+            # 調用 LLM
+            response = self.llm.invoke(prompt)
+            processed_text = response.strip()
+            
+            print("LLM 處理完成！")
+            return processed_text
+            
+        except Exception as e:
+            print(f"LLM 處理失敗: {e}")
+            return transcript
+    
+    def generate_summary(self, transcript):
+        """生成摘要"""
+        if not self.llm:
+            print("LLM 未連接，無法生成摘要")
+            return "無法生成摘要：LLM 未連接"
+        
+        try:
+            print("正在生成摘要...")
+            prompt = f"""
+請為以下文本生成條列式摘要，用繁體中文回應：
+
+{transcript}
+
+請以條列式格式回應，每個要點以「•」開頭：
+"""
+            
+            response = self.llm.invoke(prompt)
+            summary = response.strip()
+            
+            print("摘要生成完成！")
+            return summary
+            
+        except Exception as e:
+            print(f"摘要生成失敗: {e}")
+            return "摘要生成失敗"
+    
+    def cleanup_temp_files(self, audio_file):
+        """清理暫存檔案"""
+        try:
+            if audio_file and os.path.exists(audio_file):
+                # 清理音訊檔案及其目錄
+                temp_dir = os.path.dirname(audio_file)
+                import shutil
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                print("暫存檔案已清理")
+        except Exception as e:
+            print(f"清理暫存檔案時出現錯誤: {e}")
+    
+    def get_available_formats(self, url):
     """獲取可用的音訊格式"""
     print("正在檢查可用的音訊格式...")
     
